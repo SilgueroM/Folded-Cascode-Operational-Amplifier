@@ -1,0 +1,26 @@
+\babel@toc {english}{}\relax 
+\contentsline {section}{\numberline {1}Step 1: Commercial Op-Amp Benchmarking and Target Specifications}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Commercial Operational Amplifier Datasheet Survey (9 Devices)}{2}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Project Application Motivation and Selected Design Focus}{2}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Target Performance Specifications}{2}{subsection.1.3}%
+\contentsline {section}{\numberline {2}Circuit Topology and Theoretical Analysis (Razavi Ch. 9)}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Architecture Overview: Folded-Cascode Op-Amp (Razavi Fig. 9.18)}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Reference Analytical Equations from Razavi Chapter 9}{3}{subsection.2.2}%
+\contentsline {section}{\numberline {3}Biasing Network and Wide-Swing Cascode Design (Razavi Ch. 5)}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Low-Voltage Wide-Swing Cascode Biasing Principle}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Biasing Network Hand-Calculation Worksheet}{6}{subsection.3.2}%
+\contentsline {section}{\numberline {4}Hand Calculations and Transistor Sizing Procedure}{7}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Extracted Process Technology Parameters}{7}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Step-by-Step Hand-Calculation Placeholders}{7}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Master Transistor Sizing and DC Operating Point Table}{9}{subsection.4.3}%
+\contentsline {section}{\numberline {5}Cadence Simulation Verification and Performance Analysis}{10}{section.5}%
+\contentsline {subsection}{\numberline {5.1}DC Operating Point Verification}{10}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Open-Loop AC Frequency Response (Gain, UGB, and Phase Margin)}{10}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Input Common-Mode Range (ICMR) and Output Voltage Swing (OCMR)}{10}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Large-Signal Transient Response and Slew Rate (SR)}{11}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}CMRR, PSRR, and Input-Referred Noise Analysis}{11}{subsection.5.5}%
+\contentsline {subsection}{\numberline {5.6}Impact of Process, Voltage, and Temperature (PVT) Variations}{12}{subsection.5.6}%
+\contentsline {section}{\numberline {6}Design Comparison Summary and Phase 2 Filter Roadmap}{13}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Master Comparison Table: Target vs. Hand-Calculated vs. Simulated}{13}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Discussion of Discrepancies and Design Iterations}{13}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Phase 2 Integration Plan: Continuous-Time Active-RC and Switched-Capacitor Filters}{13}{subsection.6.3}%

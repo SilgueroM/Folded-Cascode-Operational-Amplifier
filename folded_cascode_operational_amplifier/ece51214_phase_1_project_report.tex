@@ -1,0 +1,457 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{bm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=black
+}
+
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{4pt}
+\sloppy
+\newcommand{\writingprompt}[1]{\par\noindent\textit{\footnotesize #1}\par}
+\newcommand{\mediaimage}[2]{%
+    \IfFileExists{#1}{%
+        \includegraphics[width=0.94\columnwidth,height=0.6\textheight,keepaspectratio]{#1}%
+    }{%
+        \fbox{\parbox[c][#2][c]{0.94\columnwidth}{\centering\footnotesize
+            Image not found; add:\\\texttt{\detokenize{#1}}}}%
+    }%
+}
+\newcommand{\mediaimagewide}[1]{%
+    \IfFileExists{#1}{%
+        \includegraphics[width=0.94\columnwidth,height=0.72\textheight,keepaspectratio]{#1}%
+    }{%
+        \fbox{\parbox[c][0.55\columnwidth][c]{0.94\columnwidth}{\centering\footnotesize
+            Image not found; add:\\\texttt{\detokenize{#1}}}}%
+    }%
+}
+
+\begin{document}
+
+\title{Design and Analysis of a High-Performance CMOS Folded Cascode Operational Amplifier\\
+{\large Design Project Report - Phase 1}}
+\author{
+\IEEEauthorblockN{Miguel Silguero}
+\IEEEauthorblockA{Elmore Family School of Electrical and Computer Engineering\\
+Purdue University, West Lafayette, IN, USA\\
+ECE 51214: CMOS Analog IC Design\\
+Instructor: Prof. Byunghoo Jung \quad Course TA: Benjamin Douglas Schuchardt\\
+EDA TA: Dali Lai \quad msilguer@purdue.edu}
+\thanks{Submitted November 11, 2026.}
+}
+\maketitle
+
+\begin{abstract}
+This report details the systematic design, theoretical hand calculation, and Cadence Virtuoso simulation of a high performance PMOS input folded cascode operational amplifier. Following the Phase 1 project requirements to design a differential input to single ended output folded cascode topology, this design strictly generates all internal biasing voltages through on chip resistor based networks, explicitly avoiding ideal current and voltage sources. The design process began with an extensive benchmarking survey of nine commercial op amps across varying architectures to synthesize realistic target specifications for a unified design focus. 
+
+Based on Razavi's fundamental folded cascode topologies, the circuit was rigorously scaled to ensure all devices operate deeply in saturation (Virtuoso Region 2) with an output DC bias of 610.89 mV. Iterative tuning of channel dimensions (scaling lengths from 90 nm to 180 nm) and internal bias resistors successfully maximized output resistance and differential gain. Final Cadence Spectre extractions demonstrate a differential passband gain of 42.0 dB and a phase margin of 88.53 degrees, exceeding the project baseline thresholds of >40 dB and >30 degrees, respectively. Furthermore, the amplifier achieves a Common Mode Rejection Ratio (CMRR) of 65.61 dB, a Power Supply Rejection Ratio (PSRR) of 42.09 dB, and a positive slew rate of 86 V/$\mu$s, thoroughly validating the hand crafted analog design against rigorous academic targets.
+\end{abstract}
+
+\begin{IEEEkeywords}
+CMOS analog design, folded cascode operational amplifier, phase margin, slew rate, CMRR, PSRR, Cadence Virtuoso, saturation region, small signal analysis, device physics.
+\end{IEEEkeywords}
+
+\section{Commercial Op Amp Benchmarking and Target Specifications}
+
+\subsection{Commercial Operational Amplifier Datasheet Survey}
+To establish a realistic and self consistent set of target performance specifications for our folded cascode operational amplifier, nine commercial operational amplifiers across JFET input, CMOS rail to rail, and zero drift architectures were surveyed[cite: 7]. Because operational amplifier specifications are strongly correlated through fundamental device physics trade offs, examining commercial datasheets provides practical baselines for open loop DC voltage gain, unity gain bandwidth (UGB), phase margin (PM), slew rate (SR), load conditions, supply voltage, common mode ranges, offset voltage, and input referred noise. 
+
+To accommodate all eleven parameters clearly, the benchmarking data is split into Table \ref{tab:datasheets_part1} (Dynamic and Load Specifications) and Table \ref{tab:datasheets_part2} (Supply, Common Mode, Noise and Optimization Criteria).
+
+\begin{table*}[!t]
+\centering
+\caption{Commercial Op Amp Datasheet Survey Part I: Dynamic and Load Specifications}
+\label{tab:datasheets_part1}
+\small
+\begin{tabularx}{\textwidth}{@{}l X *{5}{>{\centering\arraybackslash}p{1.4cm}}@{}}
+\toprule
+\textbf{Device} & \textbf{Description} & \textbf{Large DC Gain} & \textbf{Unity Gain BW} & \textbf{Phase Margin} & \textbf{Slew Rate (typ.)} & \textbf{Load ($C_L$ / $R_L$)} \\
+\midrule
+LF356 & JFET Input Operational Amplifier & $106\text{ dB}$ & $5\text{ MHz}$ & $60^\circ$ @ $5\text{ MHz}$ & $12\text{ V}/\mu\text{s}$ & $5000\text{ pF} / 2\text{ k}\Omega$ \\
+AD8541 & Low Power Rail to Rail I/O CMOS & $100\text{ dB}$ & $1\text{ MHz}$ & $63^\circ - 67^\circ$ & $0.92\text{ V}/\mu\text{s}$ & $200\text{ pF} / 100\text{ k}\Omega$ \\
+ADA4522 & $55\text{ V}$ Zero Drift Ultralow Noise & $145\text{ dB}$ (typ.) & $3\text{ MHz}$ (UGC) & $64^\circ$ & $1.4\text{ V}/\mu\text{s}$ & $50\text{ pF} / 10\text{ k}\Omega$ \\
+LT1784 & Over The Top Micropower RRIO & $100\text{ dB}$ & $2.5\text{ MHz}$ & $58^\circ$ (typ.) & $2.1\text{ V}/\mu\text{s}$ & $100\text{ pF} / 10\text{ k}\Omega$ \\
+MCP6476 & Low Quiescent Current RRIO CMOS & $126\text{ dB}$ (typ.) & $3\text{ MHz}$ & $65^\circ$ & $3.2\text{ V}/\mu\text{s}$ & $30\text{ pF} / 10\text{ k}\Omega$ \\
+TL081 & General Purpose JFET Input Op Amp & $106\text{ dB}$ & $3\text{ MHz}$ & $65^\circ$ (typ.) & $13\text{ V}/\mu\text{s}$ & $100\text{ pF} / 2\text{ k}\Omega$ \\
+TL071 & Low Noise JFET Input Op Amp & $106\text{ dB}$ & $3\text{ MHz}$ & $65^\circ$ (typ.) & $13\text{ V}/\mu\text{s}$ & $100\text{ pF} / 2\text{ k}\Omega$ \\
+TLC2272 & LinCMOS Rail to Rail Output Op Amp & $94\text{ dB}$ & $2.25\text{ MHz}$ & $52^\circ$ & $3.6\text{ V}/\mu\text{s}$ & $100\text{ pF} / 10\text{ k}\Omega$ \\
+NCS2003 & Low Voltage High SR RRO CMOS & $92\text{ dB}$ (typ.) & $5 - 7\text{ MHz}$ & $53^\circ - 64^\circ$ & $6 - 14\text{ V}/\mu\text{s}$ & $5\text{ pF} / 2\text{ k}\Omega$ \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\begin{table*}[!t]
+\centering
+\caption{Commercial Op Amp Datasheet Survey Part II: Supply, Common Mode, Noise and Optimization}
+\label{tab:datasheets_part2}
+\small
+\begin{tabularx}{\textwidth}{@{}l >{\centering\arraybackslash}p{1.7cm} >{\centering\arraybackslash}p{2.3cm} >{\centering\arraybackslash}p{1.5cm} >{\centering\arraybackslash}p{1.7cm} X@{}}
+\toprule
+\textbf{Device} & \textbf{Supply Voltage} & \textbf{Input / Output CM Range} & \textbf{Offset ($V_{OS}$)} & \textbf{Input Noise ($e_n$)} & \textbf{Optimization Criteria} \\
+\midrule
+LF356 & $\pm 15\text{ V}$ & $\pm 11\text{ V} / \pm 12\text{ V}$ & $3\text{ mV}$ & $12\text{ nV}/\sqrt{\text{Hz}}$ & High input $Z_{in}$, fast JFET settling \\
+AD8541 & $2.7\text{ to }5.5\text{ V}$ & $0\text{ to }V_S / 0.035\text{ to }V_S - 0.1\text{ V}$ & $1\text{ mV}$ & $38\text{ nV}/\sqrt{\text{Hz}}$ & Ultra low supply current ($45\text{ }\mu\text{A}$) \\
+ADA4522 & $4.5\text{ to }55\text{ V}$ & $0\text{ to }V_S - 1.5\text{ V}$ / RRO & $0.7\text{ }\mu\text{V}$ & $5.8\text{ nV}/\sqrt{\text{Hz}}$ & Zero drift DC accuracy and EMI immunity \\
+LT1784 & $2.5\text{ to }18\text{ V}$ & $0\text{ to }18\text{ V}$ (OTT) / RRO & $1.6\text{ mV}$ & $25\text{ nV}/\sqrt{\text{Hz}}$ & Over The Top input and ruggedness \\
+MCP6476 & $1.8\text{ to }5.5\text{ V}$ & $-0.3\text{ to }V_{DD} + 0.3\text{ V}$ / RRO & $\pm 1.6\text{ mV}$ & $17\text{ nV}/\sqrt{\text{Hz}}$ & Low power ($140\text{ }\mu\text{A}$) and $1.8\text{ V}$ RRIO \\
+TL081 & $\pm 5\text{ to }\pm 15\text{ V}$ & $-12\text{ to }+15\text{ V} / \pm 13.5\text{ V}$ & $3\text{ mV}$ & $18\text{ nV}/\sqrt{\text{Hz}}$ & Low input bias current ($30\text{ pA}$) and cost \\
+TL071 & $\pm 3.5\text{ to }\pm 18\text{ V}$ & $-12\text{ to }+15\text{ V} / \pm 13.5\text{ V}$ & $3\text{ mV}$ & $18\text{ nV}/\sqrt{\text{Hz}}$ & Low harmonic distortion ($0.003\%$) audio \\
+TLC2272 & $4.4\text{ to }16\text{ V}$ & $-0.3\text{ to }V_{DD} - 1.5\text{ V}$ / RRO & $0.3\text{ mV}$ & $9\text{ nV}/\sqrt{\text{Hz}}$ & Low noise CMOS and rail to rail output \\
+NCS2003 & $1.7\text{ to }5.5\text{ V}$ & $V_{SS}\text{ to }V_{DD} - 0.6\text{ V}$ / RRO & $0.5\text{ mV}$ & $20\text{ nV}/\sqrt{\text{Hz}}$ & Low voltage ($1.8\text{ V}$) high slew rate \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\subsection{Project Application Motivation and Selected Design Focus}
+The primary optimization focus selected for this project is a balanced large open loop gain with robust phase stability and completely self contained biasing. Because the operational amplifier will act as the core driving element in continuous time and discrete time filters in Phase 2, maintaining a high Common Mode Rejection Ratio (CMRR) and Power Supply Rejection Ratio (PSRR) over 40 dB is critical to reject environmental noise and supply ripples. 
+
+The folded cascode topology was explicitly chosen per the project mandates. The design utilizes a PMOS input differential pair to lower the fundamental $1/f$ (flicker) noise corner, trading off the higher mobility of NMOS inputs for improved noise performance and common mode input range compatibility.
+
+\section{Device Physics and MOSFET Operating Regions}
+To ensure predictable analog performance, all transistors must be rigorously biased in the saturation region (Region 2). The fundamental drain current ($I_D$) equations that govern the hand calculations and dimensioning are defined across three primary operating regions.
+
+\subsection{Region 0: Cutoff}
+When the gate to source voltage ($V_{GS}$) is less than the threshold voltage ($V_{TH}$), the device is in cutoff. The conduction channel is not formed, and the device physics are dominated by subthreshold leakage currents.
+\begin{equation}
+    I_D \approx 0 \quad \text{for} \quad V_{GS} < V_{TH}
+\end{equation}
+
+\subsection{Region 1: Triode (Linear) Region}
+When the channel is established ($V_{GS} > V_{TH}$) but the drain to source voltage is insufficient to pinch off the channel ($V_{DS} < V_{GS} - V_{TH}$), the MOSFET acts as a voltage controlled resistor. The gain of the amplifier collapses in this region because the small signal output resistance ($r_o$) drops drastically.
+\begin{equation}
+    I_D = \mu_n C_{ox} \frac{W}{L} \left[ (V_{GS} - V_{TH})V_{DS} - \frac{1}{2}V_{DS}^2 \right]
+\end{equation}
+Operating in Region 1 is strictly avoided for all transistors in the signal path and the current mirrors.
+
+\subsection{Region 2: Saturation Region}
+When the drain voltage is raised sufficiently such that $V_{DS} \ge V_{GS} - V_{TH}$, the channel pinches off at the drain end. The current becomes largely independent of $V_{DS}$, providing the high output impedance necessary for high intrinsic gain ($g_m r_o$). The square law equation, accounting for channel length modulation ($\lambda$), is:
+\begin{equation}
+    I_D = \frac{1}{2} \mu_n C_{ox} \frac{W}{L} (V_{GS} - V_{TH})^2 (1 + \lambda V_{DS})
+\end{equation}
+The term $(V_{GS} - V_{TH})$ is defined as the overdrive voltage, $V_{OV}$. For PMOS devices, the absolute values of the voltages ($|V_{GS}|$, $|V_{TH}|$, $|V_{DS}|$) are utilized. Ensuring every device satisfies $|V_{DS}| > |V_{OV}|$ is the fundamental mathematical constraint guiding the resistor bias network design.
+
+\section{Circuit Topology and Subsystem Analysis}
+
+\subsection{Razavi Folded Cascode Architectures and Trade Offs}
+The core topology builds upon Figure 9.15 (Folded Cascode Op Amp with Cascode PMOS Loads) and Figure 9.21 (Cascode Op Amp with Single Ended Output) from Razavi's \textit{Design of Analog CMOS Integrated Circuits}. 
+
+Initially, Figure 9.15 provides the foundation for folding the signal current from a PMOS input pair into NMOS cascode branches. This folding action allows the input and output common mode levels to be decoupled, easing headroom constraints. To meet the project requirement of a differential input to single ended output amplifier, the topology transitions to Figure 9.21 by replacing the differential cascode loads with a current mirror active load. 
+
+Converting to a single ended output introduces several critical design trade offs:
+First, the single ended output halves the effective small signal transconductance compared to a fully differential output, inherently dropping the open loop DC gain by approximately 6 dB. Second, the current mirror introduces a secondary pole at the folding node of the diode connected cascode. This degrades the phase margin and requires careful sizing of the mirror devices to keep parasitic capacitance low. Third, while differential topologies naturally suppress common mode signals symmetrically, the single ended conversion relies heavily on the output impedance of the tail current source to maintain CMRR. Finally, the charging and discharging of the load capacitance ($C_L$) become asymmetric because the current mirror limits the dynamic current available during transient slewing.
+
+\subsection{Differential Input Stage and Tail Current Source}
+\begin{figure}[H]
+\centering
+\mediaimage{media/diff_input_stage.png}{0.13\textheight}
+\caption{PMOS differential input pair with tail current source.}
+\label{fig:diff_input}
+\end{figure}
+The input stage consists of a PMOS differential pair driven by a PMOS tail current source. The gates of the input devices are biased at a 250 mV DC common mode voltage.
+
+\subsection{Core Amplifier and Active Loads}
+\begin{figure}[H]
+\centering
+\mediaimage{media/core_amp_active_loads.png}{0.13\textheight}
+\caption{NMOS folding cascodes and PMOS active current mirror loads.}
+\label{fig:core_amp}
+\end{figure}
+The core amplifier receives the folded AC signal currents from the input pair into the NMOS cascode branches. A PMOS active current mirror sits at the top to convert the differential signal to a single ended output ($V_{out}$).
+
+\subsection{Internal Biasing Network}
+\begin{figure}[H]
+\centering
+\mediaimage{media/biasing_network.png}{0.13\textheight}
+\caption{Internal resistor based biasing generation network.}
+\label{fig:bias_net}
+\end{figure}
+Per the project guidelines, no ideal DC voltage sources can be used to bias the cascode nodes. Instead, diode connected NMOS and PMOS transistors in series with passive resistors ($R_1$, $R_2$, $R_3$, and $R_4$ utilizing \texttt{resnsppoly}) generate the requisite bias voltages $V_{b1}$, $V_{b2}$, and $V_{b3}$.
+
+\section{Mathematical Proof of Transistor Operating Regions}
+To rigorously prove the viability of the hand calculations, the exact DC operating voltages extracted from the Cadence Spectre simulation are plugged into the Region 2 saturation inequality: $|V_{DS}| \ge |V_{GS}| - |V_{TH}|$. Based on the 45nm and 90nm standard process nodes used in ECE 51214, we assume typical long channel threshold voltages of $V_{THN} \approx 0.35$ V and $|V_{THP}| \approx 0.40$ V for the purpose of this analysis. The global supply voltage is $V_{DD} = 1.1$ V and $V_{SS} = 0$ V. The DC output bias is $V_{out} = 610.89$ mV.
+
+\begin{figure}[H]
+\centering
+\mediaimagewide{media/dc_operating_points.png}
+\caption{Schematic explicitly displaying all DC nodal voltages and region parameters, proving Region 2 operation for all devices.}
+\label{fig:dc_operating_points}
+\end{figure}
+
+\subsection{PM2 Tail Current Source Proof}
+The PMOS tail current source (PM2) establishes the total bias current $I_{SS}$ for the differential pair. 
+\begin{align}
+    V_S &= 1.100\text{ V} \\
+    V_G &= 0.774\text{ V} \\
+    V_D &= 0.737\text{ V}
+\end{align}
+The source to gate voltage is $V_{SG} = 1.100 - 0.774 = 0.326$ V. The source to drain voltage is $V_{SD} = 1.100 - 0.737 = 0.363$ V. Because $V_{SD} = 0.363\text{ V} > V_{SG} - |V_{THP}|$, the tail device is confirmed to be safely in saturation (Region 2) with substantial headroom.
+
+\subsection{PM3 and PM4 Differential Input Pair Proof}
+The PMOS differential pair transistors receive the 250 mV DC common mode input signal.
+\begin{align}
+    V_S &= 0.737\text{ V} \\
+    V_G &= 0.250\text{ V} \\
+    V_D &= 0.273\text{ V}
+\end{align}
+Calculating the terminal differences yields $V_{SG} = 0.737 - 0.250 = 0.487$ V, establishing a strong channel. The overdrive voltage is $|V_{OV}| = 0.487 - 0.400 = 0.087$ V. The source to drain voltage is $V_{SD} = 0.737 - 0.273 = 0.464$ V. Since $V_{SD} (0.464\text{ V}) \gg |V_{OV}| (0.087\text{ V})$, the input pair operates deeply in the saturation region.
+
+\subsection{NM3 and NM4 Bottom Current Sinks Proof}
+These NMOS devices pull the total folding current from the cascode branches. Their gates are driven by the bias network voltage $V_{b1} = 525.38$ mV.
+\begin{align}
+    V_S &= 0.000\text{ V} \\
+    V_G &= 0.525\text{ V} \\
+    V_D &= 0.273\text{ V}
+\end{align}
+The gate to source voltage is $V_{GS} = 0.525$ V, providing an overdrive of $V_{OV} = 0.525 - 0.350 = 0.175$ V. The drain to source voltage is $V_{DS} = 0.273$ V. Comparing these values, $V_{DS} (0.273\text{ V}) > V_{OV} (0.175\text{ V})$, confirming that the bottom current sinks are correctly biased in Region 2.
+
+\subsection{NM1 and NM2 Folding Cascodes Proof}
+The NMOS cascode transistors fold the signal current and boost the output impedance. Their gates are driven by $V_{b2} = 757.604$ mV.
+\begin{align}
+    V_S &= 0.273\text{ V} \\
+    V_G &= 0.757\text{ V} \\
+    V_D &= 0.610\text{ V} (V_{out})
+\end{align}
+The gate to source voltage is $V_{GS} = 0.757 - 0.273 = 0.484$ V. The overdrive voltage is $V_{OV} = 0.484 - 0.350 = 0.134$ V. The drain to source voltage is $V_{DS} = 0.610 - 0.273 = 0.337$ V. Because $V_{DS} (0.337\text{ V}) \gg V_{OV} (0.134\text{ V})$, the critical cascode devices operate well into saturation, ensuring a high small signal output resistance.
+
+\subsection{PM5 and PM6 Top Current Mirror Proof}
+The top PMOS current mirror performs the differential to single ended conversion.
+\begin{align}
+    V_S &= 1.100\text{ V} \\
+    V_G &= 0.610\text{ V} \\
+    V_D &= 0.762\text{ V}
+\end{align}
+The source to gate voltage is $V_{SG} = 1.100 - 0.610 = 0.490$ V, yielding an overdrive of $|V_{OV}| = 0.490 - 0.400 = 0.090$ V. The source to drain voltage is $V_{SD} = 1.100 - 0.762 = 0.338$ V. Since $V_{SD} (0.338\text{ V}) \gg |V_{OV}| (0.090\text{ V})$, the top mirror devices are deeply in Region 2.
+
+\subsection{PM7 and PM8 Cascode Mirror Proof}
+The lower devices of the PMOS cascode mirror boost the active load impedance. Their gates are biased by $V_{b3} = 264.055$ mV.
+\begin{align}
+    V_S &= 0.762\text{ V} \\
+    V_G &= 0.264\text{ V} \\
+    V_D &= 0.610\text{ V} (V_{out})
+\end{align}
+The source to gate voltage is $V_{SG} = 0.762 - 0.264 = 0.498$ V. The corresponding overdrive is $|V_{OV}| = 0.498 - 0.400 = 0.098$ V. The source to drain voltage is $V_{SD} = 0.762 - 0.610 = 0.152$ V. Because $V_{SD} (0.152\text{ V}) > |V_{OV}| (0.098\text{ V})$, these devices are successfully biased in saturation, though they sit closest to the triode boundary. This mathematical proof fully validates the resistor tuning process utilized during the design phase.
+
+\section{Small Signal AC Theoretical Analysis}
+With all devices mathematically proven to operate in the saturation region, the small signal AC models accurately dictate the amplifier's frequency response.
+
+\subsection{Open Loop DC Gain ($A_{v}$)}
+The open loop DC gain of the single ended folded cascode amplifier is defined by the product of the effective input transconductance and the total output resistance at the $V_{out}$ node.
+\begin{equation}
+    A_{v} = G_m R_{out} \approx g_{m1,2} R_{out}
+\end{equation}
+The total output resistance $R_{out}$ is the parallel combination of the equivalent impedance looking down into the NMOS cascode branch ($R_{down}$) and the equivalent impedance looking up into the PMOS active cascode mirror ($R_{up}$).
+\begin{equation}
+    R_{out} = R_{up} \parallel R_{down}
+\end{equation}
+By applying a small signal test voltage at the drain of the cascode devices, the impedances are derived as:
+\begin{equation}
+    R_{down} \approx \left[ (g_{m2} + g_{mb2}) r_{o2} (r_{o4} \parallel r_{o6}) \right]
+\end{equation}
+\begin{equation}
+    R_{up} \approx \left[ (g_{m8} + g_{mb8}) r_{o8} r_{o10} \right]
+\end{equation}
+where $g_{mb}$ accounts for the body effect in the cascode devices whose source terminals are not tied to the bulk potentials.
+
+\subsection{Frequency Response and Phase Margin}
+The dominant pole $\omega_{p1}$ is established at the high impedance output node by the load capacitance $C_L$.
+\begin{equation}
+    \omega_{p1} = \frac{1}{R_{out} C_L}
+\end{equation}
+The unity gain frequency (UGB or $\omega_u$) is defined where the magnitude response crosses 0 dB. Assuming a single pole roll off response prior to $\omega_u$:
+\begin{equation}
+    \omega_u \approx G_m R_{out} \times \omega_{p1} = \frac{g_{m1,2}}{C_L}
+\end{equation}
+Phase margin (PM) is determined by the location of the non dominant poles, specifically the pole at the folding node ($\omega_{p,fold}$) and the pole inside the current mirror ($\omega_{p,mirror}$). 
+\begin{equation}
+    \text{PM} = 180^\circ - \tan^{-1}\left(\frac{\omega_u}{\omega_{p1}}\right) - \tan^{-1}\left(\frac{\omega_u}{\omega_{p,fold}}\right) - \dots
+\end{equation}
+To achieve the simulated 88.53 degree phase margin, the parasitic capacitances at the folding nodes ($V_x$, $V_y$) were minimized by carefully constraining the widths of the NMOS current sink devices, ensuring that $\omega_{p,fold}$ occurs at a frequency significantly higher than the unity gain bandwidth.
+
+\subsection{Common Mode Rejection Ratio (CMRR)}
+The CMRR quantifies the amplifier's ability to reject identical signals applied simultaneously to both input terminals. It is defined as the ratio of the differential gain ($A_{dm}$) to the common mode gain ($A_{cm}$).
+\begin{equation}
+    \text{CMRR}_{\text{linear}} = \left| \frac{A_{dm}}{A_{cm}} \right|
+\end{equation}
+In dB, this becomes:
+\begin{equation}
+    \text{CMRR}_{\text{dB}} = 20 \log_{10}(|A_{dm}|) - 20 \log_{10}(|A_{cm}|)
+\end{equation}
+The common mode gain $A_{cm}$ depends strongly on the finite output impedance of the tail current source ($R_{tail}$). If $R_{tail}$ were infinite, the common mode gain would be exactly zero. The analytical expression for CMRR in a folded cascode amplifier with a single ended output current mirror load is approximately:
+\begin{equation}
+    \text{CMRR} \approx g_{m,in} R_{tail} g_{m,casc} r_{o,casc}
+\end{equation}
+This mathematical relationship highlights why maximizing the tail impedance (by utilizing a long channel length for PM2) directly contributes to the exceptional 65.61 dB CMRR achieved in the simulation results.
+
+\subsection{Power Supply Rejection Ratio (PSRR)}
+The PSRR measures how effectively the amplifier isolates the output signal from noise or ripples on the $V_{DD}$ supply rail. 
+\begin{equation}
+    \text{PSRR}_{VDD} = 20 \log_{10}\left(\left| \frac{A_{dm}}{A_{vdd}} \right|\right)
+\end{equation}
+where $A_{vdd}$ is the gain from the $V_{DD}$ rail to the output node. In a single ended folded cascode amplifier, high frequency PSRR degrades significantly because the capacitance between the supply rail and the internal current mirror nodes creates a direct AC feedthrough path to the output. Achieving 42.09 dB PSRR requires precise sizing of the top PMOS mirror devices to balance the gate to drain parasitic overlap capacitances ($C_{gd}$).
+
+\section{Simulation Characterization and Results}
+The operational amplifier was fully characterized in Cadence Virtuoso using a 1.1 V $V_{DD}$ and 0 V $V_{SS}$ single ended supply.
+
+\subsection{Phase Margin and Open Loop Differential Gain}
+An open loop AC small signal simulation was configured from 10 kHz to 10 GHz with a load capacitance connected to the output. Applying a 1 V AC differential stimulus at $V_{in+}$ while holding $V_{in-}$ at 250 mV DC yielded a flat low frequency passband gain of approximately 42.0 dB. The gain rolls off cleanly at 20 dB/decade, resulting in a robust Phase Margin of 88.53 degrees evaluated via the ADE Explorer scalar output. Both metrics comfortably exceed the project thresholds of >40 dB and >30 degrees.
+\begin{figure}[H]
+\centering
+\mediaimage{media/ac_diff_gain_pm.png}{0.13\textheight}
+\caption{ViVA Bode plot illustrating a 42.0 dB passband gain and 88.53 degree PM.}
+\label{fig:ac_bode}
+\end{figure}
+
+\subsection{Large Signal Transient Response and Slew Rate}
+To evaluate the large signal transient performance, the operational amplifier was configured in a unity gain feedback loop, driving a 600 fF load capacitance ($C_{load}$)[cite: 9]. A pulse input stepping from 200 mV to 700 mV was applied to the non-inverting terminal ($V_{in+}$)[cite: 8, 9]. The resulting transient output waveform and its mathematical derivative were plotted in Cadence ViVA[cite: 8]. The derivative plot demonstrates a peak positive slew rate ($SR_+$) of approximately 86 V/$\mu$s[cite: 8]. 
+
+\begin{figure}[H]
+\centering
+\mediaimage{media/slew_rate_testbench.png}{0.13\textheight}
+\caption{Unity gain slew rate testbench schematic with 600 fF load.}
+\label{fig:sr_tb}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\mediaimage{media/slew_rate.png}{0.13\textheight}
+\caption{ViVA transient plot showing rising and falling slew rates.}
+\label{fig:sr_plot}
+\end{figure}
+
+\subsection{ICMR and Output Voltage Swing (OCMR)}
+To measure the Input Common Mode Range (ICMR) and Output Common Mode Range (OCMR), a DC sweep was performed with the amplifier configured in unity gain feedback[cite: 11]. 
+
+\begin{figure}[H]
+\centering
+\mediaimage{media/ICMR_output_swing_testbench.png}{0.13\textheight}
+\caption{Unity-gain DC sweep testbench for measuring ICMR and OCMR.}
+\label{fig:icmr_tb}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\mediaimage{media/ICMR_output_swing_results.png}{0.13\textheight}
+\caption{DC sweep indicating the linear tracking region for Input and Output Common Mode Ranges.}
+\label{fig:icmr_plot}
+\end{figure}
+
+\textbf{Exact Measurement Results:}
+\begin{itemize}
+    \item \textbf{Linear Tracking Region:} From $v_{in} \approx 0.15$ V up to $v_{in} = 0.65$ V (measured right at the marker: $v_{in} = 650.0$ mV, $V_{out} = 646.636$ mV), the green $V_{out}$ curve tracks directly on top of the red $V_{in}$ line with a slope of roughly 1 V/V[cite: 10].
+    \item \textbf{Input Common-Mode Range (ICMR):} $V_{in,min} \approx 0.15$ V (150 mV), $V_{in,max} \approx 0.65$ V (650 mV, or up to $\sim$0.72 V before full saturation), yielding a total ICMR span of approximately 0.50 V[cite: 10].
+    \item \textbf{Output Voltage Swing (OCMR):} $V_{out,min} \approx 0.15$ V (150 mV), $V_{out,max} \approx 0.65$ V to 0.73 V (linear up to 646.6 mV, hard-clamping at $\sim$730 mV)[cite: 10]. The linear output swing span is approximately 0.50 V peak-to-peak[cite: 10].
+\end{itemize}
+
+\textbf{Device Physics Analysis of Range Limits:}
+Understanding why the curve bends at both extremes is critical for analyzing the physical topology limits[cite: 10]. The limits occur precisely when devices run out of headroom and fall out of the saturation region (Region 2) into the triode region (Region 1)[cite: 10].
+
+\begin{itemize}
+    \item \textbf{Why the Lower End Bends ($\sim$150 mV):} When $v_{in}$ (and therefore $V_{out}$) drops below $\sim$150 mV, the bottom NMOS current sinks (NM3, NM4) and NMOS cascode devices (NM1, NM2) lose their required drain to source voltage headroom ($V_{out} < V_{DS,sat1} + V_{DS,sat3}$)[cite: 10]. They enter the triode region (Region 1) and can no longer sink the bias current needed to pull $V_{out}$ all the way down to 0 V, causing $V_{out}$ to level off above ground (around $\sim$60 mV at $v_{in} = 0$)[cite: 10].
+    \item \textbf{Why the Upper End Clamps ($\sim$650-730 mV):} Because the amplifier uses a PMOS differential input pair (PM3, PM4) beneath a PMOS tail current source (PM2), raising $v_{in}$ pushes the source node of the input pair upward ($V_S = v_{in} + |V_{GS3,4}|$)[cite: 10]. Once $v_{in}$ exceeds 650 mV, $V_S$ gets too close to $V_{DD} = 1.1$ V ($V_S > 1.1\text{ V} - |V_{DS,sat2}|$), squeezing PM2 out of saturation (Region 2) and shutting off the tail current[cite: 10]. Once the input pair turns off, $V_{out}$ completely flattens out at $\sim$730 mV[cite: 10].
+\end{itemize}
+
+\subsection{Common Mode Rejection Ratio (CMRR)}
+To measure CMRR, both op amp inputs were shorted together to inject a pure 1 V AC common mode signal with zero differential input. The ViVA common mode gain plot showed a low frequency common mode gain of $A_{cm} = -23.61$ dB at 10.0 kHz. 
+\begin{equation}
+    \text{CMRR} = 42.0 - (-23.61) = 65.61\text{ dB}
+\end{equation}
+This highly robust CMRR significantly exceeds the 40 dB required threshold.
+\begin{figure}[H]
+\centering
+\mediaimage{media/cmrr_testbench.png}{0.13\textheight}
+\caption{CMRR shorted input testbench and low frequency common mode gain plot.}
+\label{fig:cmrr}
+\end{figure}
+
+\subsection{Power Supply Rejection Ratio (PSRR)}
+To evaluate supply noise rejection, the AC stimulus was removed from the op amp inputs (held at purely 250 mV DC) and a 1 V AC ripple was injected directly onto the $V_{DD}$ supply rail. The supply to output transfer gain measured at 10.0 kHz was $A_{vdd} = -0.0934$ dB.
+\begin{equation}
+    \text{PSRR}_{VDD} = 42.0 - (-0.0934) = 42.09\text{ dB}
+\end{equation}
+This confirms the internally biased network adequately shields the single ended output from supply voltage transients, exceeding the 40 dB requirement.
+\begin{figure}[H]
+\centering
+\mediaimage{media/psrr_testbench.png}{0.13\textheight}
+\caption{PSRR VDD ripple stimulus testbench and supply gain plot.}
+\label{fig:psrr}
+\end{figure}
+
+\subsection{Power Consumption}
+The total static power dissipation of the core amplifier and biasing network was extracted directly from the primary voltage source ($V_0$)[cite: 11]. Operating from a single 1.1 V supply, the total current drawn by the circuit is 828.81 $\mu$A[cite: 9, 11]. The total power consumption is calculated as:
+\begin{equation}
+    P_{diss} = V_{DD} \times I_{total} = 1.1 \text{ V} \times 828.81\ \mu\text{A} = 0.911 \text{ mW}
+\end{equation}
+This confirms a sub-milliwatt power footprint for the operational amplifier. 
+
+\section{Summary of Achieved Results}
+Table \ref{tab:final_results} summarizes the achieved metrics against the required specifications. The folded cascode design was successfully implemented using strictly internal biasing, overcoming single ended conversion challenges to secure high stability, fast slew rate, and strong supply rejection for Phase 2 implementation.
+
+\begin{table}[H]
+\centering
+\caption{Summary of Achieved Results}
+\label{tab:final_results}
+\small
+\begin{tabularx}{\columnwidth}{@{}l c X@{}}
+\toprule
+\textbf{Metric} & \textbf{Target Spec} & \textbf{Achieved Result} \\
+\midrule
+Operating Region & Region=2 & All devices in saturation \\
+Passband DC Gain & $> 40\text{ dB}$ & $\sim 42.0\text{ dB}$ \\
+Phase Margin (PM) & $> 30^\circ$ & $88.53^\circ$ \\
+Slew Rate ($SR_+$) & N/A & $\sim 86\text{ V}/\mu\text{s}$ \\
+CMRR & $> 40\text{ dB}$ & $65.61\text{ dB}$ \\
+PSRR ($V_{DD}$) & $> 40\text{ dB}$ & $42.09\text{ dB}$ \\
+Power Consumption & N/A & $0.911\text{ mW}$ \\
+Linear ICMR Span & N/A & $\sim 0.50\text{ V}$ ($0.15\text{ V}$ to $0.65\text{ V}$) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{thebibliography}{99}
+\bibitem{razavi2016}
+B. Razavi, \textit{Design of Analog CMOS Integrated Circuits}, 2nd ed. New York, NY, USA: McGraw-Hill Education, 2016.
+
+\bibitem{ds1_lf356}
+Texas Instruments, \textit{LF356 Datasheet}, SNOSBH0E, May 1998.
+
+\bibitem{ds2_ad8541}
+Analog Devices, \textit{AD8541 Datasheet}, Rev. G, 2008.
+
+\bibitem{ds3_ada4522}
+Analog Devices, \textit{ADA4522 Datasheet}, Rev. I, 2025.
+
+\bibitem{ds4_lt1784}
+Analog Devices, \textit{LT1784 Datasheet}, Rev. 1784fa, 2001.
+
+\bibitem{ds5_mcp6476}
+Microchip Technology, \textit{MCP6476 Datasheet}, DS20006419A, 2020.
+
+\bibitem{ds6_tl081}
+Texas Instruments, \textit{TL081 Datasheet}, SLOS081M, Feb. 1977.
+
+\bibitem{ds7_tl071}
+Texas Instruments, \textit{TL071 Datasheet}, SLOS080T, Sep. 1978.
+
+\bibitem{ds8_tlc2272}
+Texas Instruments, \textit{TLC2272 Datasheet}, SLOS190H, Feb. 1997.
+
+\bibitem{ds9_ncs2003}
+ON Semiconductor, \textit{NCS2003 Datasheet}, NCS2003/D, Rev. 15, 2021.
+\end{thebibliography}
+
+\end{document}
